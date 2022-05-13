@@ -1,0 +1,62 @@
+import arcpy
+
+mxd = arcpy.mapping.MapDocument("CURRENT")
+ddp = mxd.dataDrivenPages
+ddpName = ddp.pageNameField.name
+masterDFList = arcpy.mapping.ListDataFrames(mxd, "*bathymetry*")
+masterDFList.sort(key=lambda x: x.name, reverse=False)
+
+rangeStart = ddp.currentPageID
+rangeEnd = ddp.currentPageID+1
+
+# Last page requires a special case where frames are moved out of the map layout and then returned after pdf export
+lastPage = False
+
+for pageNum in range(rangeStart, rangeEnd):
+    #Update through bathymetry frames to correct DDP extent
+    for index, masterDF in enumerate(masterDFList):
+        # Find frame number
+        masterDFName = masterDF.name.lower().replace('bathymetry', '').strip()
+        # Change DDP pageNum depending on the frame so that extent, rotation, and scale from the DDP can be copied
+        if pageNum + index < ddp.pageCount+1:
+            ddp.currentPageID = pageNum + index
+            # Set DDP rotation, scale, and extent for the second, etc frames
+            masterDF.rotation = ddp.dataFrame.rotation
+            masterDF.scale = ddp.dataFrame.scale
+            masterDF.panToExtent(ddp.dataFrame.extent)
+        else:
+            # If the previous frame was the last DDP frame, turn off unused layers
+            lastPage = True
+            for lyr in arcpy.mapping.ListLayers(mxd, "", masterDF):
+                lyr.visible = False
+
+        # Search though Profiles to find matching frame number
+        for profileDF in arcpy.mapping.ListDataFrames(mxd, "*profile*"):
+            # Find profile frame number
+            profileDFName = profileDF.name.lower().replace('profile', '').strip()
+            # looks for profile number matching bathy frame number
+            if masterDFName == profileDFName:
+                # If the previous frame was the last DDP frame, turn off unused layers
+                if lastPage:
+                    for lyr in arcpy.mapping.ListLayers(mxd, "*", profileDF):
+                        lyr.visible = False
+                else:
+                    Name1 = ddp.pageRow.getValue(ddpName)  # need to check that there is a next row
+                    # Finds the index layer "DDP" in the profile frame
+                    Shp = arcpy.mapping.ListLayers(mxd, "DDP", profileDF)[0]
+                    rows = arcpy.SearchCursor(Shp)
+                    for row in rows:
+                        # Searches DDP layer for the matching shape in DDP index layer
+                        Name2 = row.getValue("DDPName")
+                        extent = row.Shape.extent
+                        if Name2 == Name1:
+                            # When it finds a match, it pans to the extent
+                            profileDF.panToExtent(extent)
+
+    # Changes the DDP page number back to match the first Bathy frame
+    ddp.currentPageID = pageNum
+    arcpy.AddMessage("DDP Page ID is: " + str(ddp.currentPageID))
+    # Refresh view to update extents
+    arcpy.RefreshActiveView()
+
+del mxd, ddp, masterDFList
