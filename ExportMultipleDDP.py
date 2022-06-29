@@ -59,7 +59,7 @@ for pageNum in range(rangeStart, rangeEnd, len(masterDFList)):
                     profileDFName = profileDFName.replace('bar', '').strip()
                 # looks for profile number matching bathy frame number
                 if masterDFName == profileDFName:
-                    # If the previous frame was the last DDP frame, turn off unused layers
+                    # If the previous frame was the last DDP frame, move unused frames out of the layout
                     if lastPage:
                         movedFrames.append((profileDF, profileDF.elementPositionX))
                         profileDF.elementPositionX = 6000
@@ -90,7 +90,8 @@ for pageNum in range(rangeStart, rangeEnd, len(masterDFList)):
     arcpy.RefreshActiveView()
     # Need to track pageCount so we can only export correct pages
     pageCount += 1
-    arcpy.mapping.ExportToPDF(mxd, path + "/" + fileName + str(pageCount) + ".pdf", resolution=resolution, convert_markers=True)
+    arcpy.mapping.ExportToPDF(mxd, path + "/" + fileName + str(pageCount) + ".pdf", resolution=resolution,
+                              convert_markers=True, georef_info=True)
     arcpy.AddMessage("Exported Page# " + str(pageCount))
 
 # reposition moved frames for convenience of later use
