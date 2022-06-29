@@ -90,7 +90,7 @@ for pageNum in range(rangeStart, rangeEnd, len(masterDFList)):
     arcpy.RefreshActiveView()
     # Need to track pageCount so we can only export correct pages
     pageCount += 1
-    arcpy.mapping.ExportToPDF(mxd, path + "/" + fileName + str(pageCount) + ".pdf", resolution=resolution,
+    arcpy.mapping.ExportToPDF(mxd, path + "/" + fileName + "_" + str(pageCount) + ".pdf", resolution=resolution,
                               convert_markers=True, georef_info=True)
     arcpy.AddMessage("Exported Page# " + str(pageCount))
 
