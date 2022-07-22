@@ -1,4 +1,4 @@
-import arcpy
+import arcpy, os
 
 mxd = arcpy.mapping.MapDocument("CURRENT")
 ddp = mxd.dataDrivenPages
@@ -9,12 +9,15 @@ masterDFList.sort(key=lambda x: x.name, reverse=False)
 
 path = arcpy.GetParameterAsText(0)
 fileName = arcpy.GetParameterAsText(1)
-rangeStart = int(arcpy.GetParameterAsText(2))
+naming_layer = arcpy.GetParameterAsText(2)
+naming_field = arcpy.GetParameterAsText(3)
+rangeStart = int(arcpy.GetParameterAsText(4))
+
 
 #Checks for user input for the range in. Uses the end of the dataset if no range end is supplied. Also checks that
 #the range input is valid
-if arcpy.GetParameterAsText(3):
-    rangeEnd = int(arcpy.GetParameterAsText(3)) + 1
+if arcpy.GetParameterAsText(5):
+    rangeEnd = int(arcpy.GetParameterAsText(5)) + 1
     if rangeEnd < rangeStart:
         raise ValueError("End of range must be equal to or greater than beginning of range.")
     elif not rangeEnd < ddp.pageCount+2:
@@ -85,14 +88,18 @@ for pageNum in range(rangeStart, rangeEnd, len(masterDFList)):
 
     # Changes the DDP page number back to match the first Bathy frame
     ddp.currentPageID = pageNum
-    arcpy.AddMessage("DDP Page ID is: " + str(ddp.currentPageID))
+    arcpy.AddMessage("DDP Page ID is: {0} ".format(ddp.currentPageID))
     # Refresh view to update extents
     arcpy.RefreshActiveView()
     # Need to track pageCount so we can only export correct pages
     pageCount += 1
-    arcpy.mapping.ExportToPDF(mxd, path + "/" + fileName + "_" + str(pageCount) + ".pdf", resolution=resolution,
+    if naming_field:
+        pdf_name = "{0}.pdf".format(ddp.pageRow.getValue(naming_field))
+    else:
+        pdf_name = "{0}_{1}.pdf".format(fileName, pageCount)
+    arcpy.mapping.ExportToPDF(mxd, os.path.join(path, pdf_name), resolution=resolution,
                               convert_markers=True, georef_info=True)
-    arcpy.AddMessage("Exported Page# " + str(pageCount))
+    arcpy.AddMessage("Exported Page #{0} ".format(pageCount))
 
 # reposition moved frames for convenience of later use
 for frame, position in movedFrames:
